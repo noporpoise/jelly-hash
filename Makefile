@@ -1,10 +1,7 @@
-SRCS=$(wildcard *.c)
-HDRS=$(wildcard *.h)
-
-jhash: $(SRCS) $(HDRS)
-	$(CC) -Wall -Wextra -g -O2 -o jellyhash $(SRCS)
+jellytest: jellytest.c jellyhash.h
+	$(CC) -Wall -Wextra -g -O2 -o jellytest jellytest.c
 
 clean:
-	rm -rf jellyhash *.dSYM
+	rm -rf jellytest *.dSYM
 
 .PHONY: clean
