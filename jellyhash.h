@@ -295,7 +295,8 @@ static inline HKey jelly_hash_find(JellyHash *jh, const HWord *key,
   HWord hash[kwords], entry[jh->hwords+1], found[jh->hwords+1];
   size_t i, w, o, rehashes, binend, pos, lockpos, lockw, locko;
   size_t wordbits, lrem, krem, lbits, kbits;
-  HKey loc, lastmsk = jh_bitmask(jh->klbits);
+  HKey loc;
+  const HWord emptymsk = jh_bitmask(NRBITS)<<1, lastmsk = jh_bitmask(jh->klbits);
 
   *inserted = 0;
 
@@ -352,10 +353,9 @@ static inline HKey jelly_hash_find(JellyHash *jh, const HWord *key,
         _jelly_read(jh, lockw, locko, found, jh->keylen);
 
         if(memcmp(found, entry, jh->hwords*sizeof(HWord)) == 0) return pos;
-        else if(found[0] & 1) continue; // locked
-        else if(found[0] & (jh_bitmask(NRBITS)<<1)) break; // not empty, not match
+        else if((found[0] & emptymsk) * !(found[0] & 1)) break;// !empty,!locked,!match
         else {
-          // Empty slot - entry not found
+          // Empty or locked slot - entry not found
           if(!insert) return HASH_NULL;
 
           if(_jelly_acquire_lock(data, lockw, locko))

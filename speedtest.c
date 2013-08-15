@@ -77,22 +77,22 @@ static inline void* speedtest(void *ptr)
 
   for(i = 0; i < num_ops; i++)
   {
-    // kmer_random(jhash->k, bkmer);
-    bkmer[0] = num_ops*thread->threadid + i;
+    kmer_random(jhash->k, bkmer);
+    // bkmer[0] = num_ops*thread->threadid + i;
     // printf("kmer: %s\n", hwords_to_binary(bkmer, kwords, tmp));
     hpos = jelly_hash_find(jhash, bkmer, 1, &found);
     if(hpos == HASH_NULL) {
       jelly_hash_print_stats(jhash, stdout);
       die("Hash full!");
     }
-    // HWord result[kwords+1];
-    // char tmp[kwords*64+1];
-    // jelly_hash_get_key(jhash, hpos, result);
-    // if(memcmp(result,bkmer,kwords*sizeof(HWord))) {
-    //   printf("kmer: %s\n", hwords_to_binary(bkmer, 0, kwords, tmp));
-    //   printf("rslt: %s\n", hwords_to_binary(result, 0, kwords, tmp));
-    //   die("Mismatch!");
-    // }
+    HWord result[kwords+1];
+    char tmp[kwords*64+1];
+    jelly_hash_get_key(jhash, hpos, result);
+    if(memcmp(result,bkmer,kwords*sizeof(HWord))) {
+      printf("kmer: %s\n", hwords_to_binary(bkmer, 0, kwords, tmp));
+      printf("rslt: %s\n", hwords_to_binary(result, 0, kwords, tmp));
+      die("Mismatch!");
+    }
   }
 
   pthread_exit(NULL);

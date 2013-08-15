@@ -10,6 +10,6 @@ speedtest: speedtest.c jellyhash.h twang.h
 	$(CC) -Wall -Wextra $(OPT) -o speedtest speedtest.c
 
 clean:
-	rm -rf jellytest *.dSYM
+	rm -rf speedtest *.dSYM
 
 .PHONY: all clean
