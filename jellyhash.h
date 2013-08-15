@@ -311,8 +311,8 @@ static inline HKey jelly_hash_find(JellyHash *jh, const HWord *key,
 
   for(rehashes = 0; rehashes+1 < (1UL<<NRBITS); rehashes++)
   {
-    memset(entry, 0, jh->hwords*sizeof(HWord));
-    entry[0] = (rehashes<<1)+2; // collisions id = 1, lock = 0
+    // memset(entry, 0, jh->hwords*sizeof(HWord));
+    entry[0] = (rehashes+1) << 1; // collisions id = 1.., lock = 0
     loc = 0;
 
     // split hash into loc and remaining k-l bits for entry
@@ -348,19 +348,19 @@ static inline HKey jelly_hash_find(JellyHash *jh, const HWord *key,
       while(1)
       {
         // Wait for lock bit (spin lock)
-        while((data[lockw]>>locko) & 1);
+        while((data[lockw]>>locko) & 1UL);
 
         _jelly_read(jh, lockw, locko, found, jh->keylen);
 
         if(memcmp(found, entry, jh->hwords*sizeof(HWord)) == 0) return pos;
-        else if((found[0] & emptymsk) * !(found[0] & 1)) break;// !empty,!locked,!match
+        else if((found[0] & emptymsk) * !(found[0] & 1UL)) break;// !empty,!locked,!match
         else {
           // Empty or locked slot - entry not found
           if(!insert) return HASH_NULL;
 
           if(_jelly_acquire_lock(data, lockw, locko))
           {
-            entry[0] |= 1; // Set lock = 1
+            entry[0] |= 1UL; // Set lock = 1
 
             // Got lock - check still empty
             _jelly_read(jh, lockw, locko, found, jh->keylen);
