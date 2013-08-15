@@ -1,19 +1,19 @@
 C implementation of the JellyFish hash table
-============================================
+--------------------------------------------
 Isaac Turner  
 12 August 2013  
 License: Public Domain  
 
-Thread-safe hashtable that uses compressed bit representation.
+A thread-safe hash table that uses compressed bit representation.
 Fast, low memory and multithreaded. Inspired by the jellyfish kmer-counter
 [http://www.cbcb.umd.edu/software/jellyfish].
 
-*Note:* this is experimental code beware changes and bugs.
+*Note:* this is experimental code beware - changes and bugs.
 
 About
 -----
 
-We reduce the memory footprint by using a reversible hash function to allocate
+The memory footprint is reduced by using a reversible hash function to allocate
 a position in the hash table. For any given element in the hash table, we can
 infer information about it by using the reverse hash function on it's position.
 This reduces the amount of information (bits) we have to use to store each item.
@@ -22,6 +22,7 @@ This implentation is a single .h file and allows multiple threads to add to the
 hash at the same time safely.  Should work on 32 and 64 bit systems.
 
 Differences from Jellyfish:
+
 1. single .h file in C instead of C++
 2. uses reversible static hash function instead of generating random matrix,
    calculating its inverse and doing matrix multiplication
@@ -103,5 +104,5 @@ TODO
 ----
 1. benchmark
 2. add support for k < l (just a bit array)
-3. faster non-threadsafe functions
+3. add non-threadsafe functions (possibly faster)
 4. better 32 bit mix functions
