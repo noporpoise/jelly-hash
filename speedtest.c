@@ -5,23 +5,26 @@
 #include <pthread.h>
 #include <time.h> // srand
 
-// Set number of collisions allowed (max is: 2^NRBITS-1)
-// #define NRBITS 5
+// Set number of collisions allowed (max is: 2^JH_NRBITS-1)
+// #define JH_NRBITS 5
 
 // Set word size to be used by the hash table
-// #define HWord uint32_t
-// #define HWORD_MAX UINT32_MAX
-// #define HWORDBITS 32
+// #define JH_FORCE_64 1
+// #define JH_FORCE_32 1
 
 #include "jellyhash.h"
 
-static const char usage[] =
-"usage: speedtest [Options] <num_ops>\n"
-"  Test hash table speed.  Table size is b*2^l\n"
+void print_usage()
+{
+  printf("usage: speedtest [Options] <num_ops>\n"
+"  Test hash table speed.  Table capacity is: b*2^l. Memory is: (k-l+%i)*capacity.\n"
+"  Rehash limit is: %i\n"
 "    -k <k>  Element size\n"
 "    -l <l>  Bits for bucket addressing\n"
 "    -b <b>  Number of elements per bucket\n"
-"    -t <t>  Number of threads to use\n";
+"    -t <t>  Number of threads to use\n", JH_NRBITS+1, (1<<JH_NRBITS)-1);
+  exit(EXIT_FAILURE);
+}
 
 #define die(fmt, ...) call_die(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
 
@@ -71,29 +74,48 @@ static inline void* speedtest(void *ptr)
   size_t num_ops = thread->num_ops;
 
   size_t i, kwords = jh_nwords(jhash->k);
-  HWord bkmer[kwords];
+  HWord bkmer[kwords], result[kwords];
   int found;
   HKey hpos;
+  // char tmp[kwords*HWORDBITS+1];
+  memset(bkmer, 0, sizeof(HWord)*kwords);
+  memset(result, 0, sizeof(HWord)*kwords);
 
   for(i = 0; i < num_ops; i++)
   {
     kmer_random(jhash->k, bkmer);
     // bkmer[0] = num_ops*thread->threadid + i;
     // printf("kmer: %s\n", hwords_to_binary(bkmer, kwords, tmp));
-    hpos = jelly_hash_find(jhash, bkmer, 1, &found);
-    if(hpos == HASH_NULL) {
+    hpos = jelly_hash_find(jhash, (char*)bkmer, 1, &found);
+    if(hpos == JHASH_NULL) {
       jelly_hash_print_stats(jhash, stdout);
       die("Hash full!");
     }
-    HWord result[kwords+1];
-    char tmp[kwords*64+1];
+    // printf("add word: %zu %s\n", hpos, hwords_to_binary(bkmer, 0, kwords, tmp));
+
+    // jelly_hash_get_key(jhash, hpos, result);
+    // if(memcmp(result,bkmer,kwords*sizeof(HWord))) {
+    //   printf("kmer: %s\n", hwords_to_binary(bkmer, 0, kwords, tmp));
+    //   printf("rslt: %s\n", hwords_to_binary(result, 0, kwords, tmp));
+    //   die("Add mismatch!");
+    // }
+  }
+
+  /*
+  for(i = 0; i < num_ops; i++)
+  {
+    bkmer[0] = num_ops*thread->threadid + i;
+    // printf("find word: %s\n", hwords_to_binary(bkmer, 0, kwords, tmp));
+    hpos = jelly_hash_find(jhash, (char*)bkmer, 0, &found);
+    if(hpos == JHASH_NULL) die("Not found");
     jelly_hash_get_key(jhash, hpos, result);
     if(memcmp(result,bkmer,kwords*sizeof(HWord))) {
       printf("kmer: %s\n", hwords_to_binary(bkmer, 0, kwords, tmp));
       printf("rslt: %s\n", hwords_to_binary(result, 0, kwords, tmp));
-      die("Mismatch!");
+      die("Find mismatch!");
     }
   }
+  */
 
   pthread_exit(NULL);
 }
@@ -104,16 +126,15 @@ int main(int argc, char **argv)
   size_t num_ops;
   int c;
 
-  while ((c = getopt(argc, argv, "k:l:b:t:")) >= 0)
+  while ((c = getopt(argc, argv, "k:l:b:t:h")) >= 0)
     if (c == 'k') k = atoi(optarg);
     else if (c == 'l') l = atoi(optarg);
     else if (c == 'b') b = atoi(optarg);
     else if (c == 't') num_of_threads = atoi(optarg);
+    else if (c == 'h') print_usage();
 
-  if(optind == argc) {
-    fputs(usage, stderr);
-    exit(EXIT_FAILURE);
-  }
+  if(optind == argc)
+    print_usage();
 
   num_ops = atol(argv[argc-1]);
   num_ops /= num_of_threads;
