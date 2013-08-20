@@ -65,10 +65,10 @@ static inline void jelly_hash_print_stats(const JellyHash *jh, FILE *fh);
 #define jh_getword(d,w,o) \
         (((d)[w] >> (o)) | ((!!(o)) * ((d)[(w)+1] << ((HWORDBITS)-(o)))))
 
-#define jh_nwords(x) (((x)+(HWORDBITS)-1)/(HWORDBITS))
+#define jh_nwords(x)    (((x)+(HWORDBITS)-1)/(HWORDBITS))
 #define jh_fullwords(x) ((x)/(HWORDBITS))
-#define jh_rembits(x) ((x)&((HWORDBITS)-1)) /* returns 0..(HWORDBITS-1) */
-#define jh_lastbits(x) (jh_rembits((x)+(HWORDBITS)-1)+1) /* returns 1..HWORDBITS */
+#define jh_rembits(x)   ((x)&((HWORDBITS)-1)) /* returns 0..(HWORDBITS-1) */
+#define jh_lastbits(x)  (jh_rembits((x)+(HWORDBITS)-1)+1) /* returns 1..HWORDBITS */
 
 // A possibly faster way to combine two words with a mask
 //#define jh_maskmerge(a,b,abits) ((a & abits) | (b & ~abits))

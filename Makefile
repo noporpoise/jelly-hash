@@ -6,7 +6,7 @@ endif
 
 all: speedtest
 
-speedtest: speedtest.c jellyhash.h twang.h
+speedtest: speedtest.c jellyhash.h
 	$(CC) -Wall -Wextra $(OPT) -o speedtest speedtest.c
 
 clean:
