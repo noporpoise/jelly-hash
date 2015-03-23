@@ -253,9 +253,9 @@ static inline char* hwords_to_binary(const HWord *b, size_t o, size_t l, char *s
 
 
 static inline void _jelly_read(const JellyHash *jh, size_t w, size_t o,
-                               HWord *restrict entry, size_t lenbits)
+                               HWord *entry, size_t lenbits)
 {
-  const volatile HWord *restrict data = jh->data;
+  const volatile HWord *data = jh->data;
   size_t i, nwords = jh_nwords(lenbits);
 
   for(i = 0; i < nwords; i++, w++) entry[i] = jh_getword(data,w,o);
@@ -265,9 +265,9 @@ static inline void _jelly_read(const JellyHash *jh, size_t w, size_t o,
   // printf("read: %s\n", hwords_to_binary(entry, 0, jh_nwords(lenbits), tmp));
 }
 
-static inline void _jelly_write(volatile HWord *restrict data,
+static inline void _jelly_write(volatile HWord *data,
                                 size_t pos, size_t w, size_t o,
-                                HWord *restrict entry, size_t lenbits)
+                                HWord *entry, size_t lenbits)
 {
   size_t totallen, lastw, lasto;
   size_t midw, mido, dw;
@@ -316,7 +316,7 @@ static inline void _jelly_write(volatile HWord *restrict data,
   while(!__sync_bool_compare_and_swap(data+lastw, oldw, neww));
 }
 
-static inline int _jelly_acquire_lock(volatile HWord *restrict data,
+static inline int _jelly_acquire_lock(volatile HWord *data,
                                       size_t lockw, size_t locko)
 {
   HWord oldw = data[lockw];
@@ -325,7 +325,7 @@ static inline int _jelly_acquire_lock(volatile HWord *restrict data,
   return __sync_bool_compare_and_swap(data+lockw, oldw, neww);
 }
 
-static inline void _jelly_release_lock(volatile HWord *restrict data,
+static inline void _jelly_release_lock(volatile HWord *data,
                                        size_t lockw, size_t locko)
 {
   HWord oldw, neww, mask = ~(1UL<<locko);
@@ -421,7 +421,7 @@ static inline void _jelly_unhash_key(HWord *hash, size_t kwords, size_t klbits)
 static inline HKey jelly_hash_find(JellyHash *jh, const char *key,
                                    int insert, int *inserted)
 {
-  volatile HWord *restrict const data = jh->data;
+  volatile HWord *const data = jh->data;
   const size_t kwords = jh->kwords;
   HWord hash[kwords], entry[jh->hwords+1], found[jh->hwords+1];
   size_t i, w, o, rehashes, binend, pos, lockpos, lockw, locko;

@@ -3,7 +3,10 @@
 #include <stdarg.h>
 #include <unistd.h>
 #include <pthread.h>
+#include <assert.h>
 #include <time.h> // srand
+
+#include "num_format.h"
 
 // Set number of collisions allowed (max is: 2^JH_NRBITS-1)
 // #define JH_NRBITS 5
@@ -26,38 +29,11 @@ void print_usage()
   exit(EXIT_FAILURE);
 }
 
-#define die(fmt, ...) call_die(__FILE__, __LINE__, fmt, ##__VA_ARGS__)
+#define die(fmt,...) do { \
+  fprintf(stderr, "[%s:%i] Error: %s() "fmt"\n", __FILE__, __LINE__, __func__, ##__VA_ARGS__); \
+  exit(EXIT_FAILURE); \
+} while(0)
 
-void call_die(const char *file, int line, const char *fmt, ...)
-__attribute__((format(printf, 3, 4)))
-__attribute__((noreturn));
-
-void call_die(const char *file, int line, const char *fmt, ...)
-{
-  va_list argptr;
-  fflush(stdout);
-  fprintf(stderr, "[%s:%i] Error: ", file, line);
-  va_start(argptr, fmt);
-  vfprintf(stderr, fmt, argptr);
-  va_end(argptr);
-  if(*(fmt + strlen(fmt) - 1) != '\n') fputc('\n', stderr);
-  exit(EXIT_FAILURE);
-}
-
-// Get a random binary kmer -- useful for testing
-static inline void kmer_random(uint32_t kbits, HWord *kmer)
-{
-  // printf("kbits: %u %u\n", kbits, jh_rembits(kbits));
-  size_t i, kwords = jh_nwords(kbits);
-  for(i = 0; i < kwords; i++) {
-    #if HWORD_MAX > UINT32_MAX
-      kmer[i] = (((HWord)rand())<<32) | rand();
-    #else
-      kmer[i] = rand();
-    #endif
-  }
-  kmer[kwords-1] &= jh_bitmask(kbits);
-}
 
 typedef struct {
   int threadid;
@@ -77,46 +53,18 @@ static inline void* speedtest(void *ptr)
   HWord bkmer[kwords], result[kwords];
   int found;
   HKey hpos;
-  // char tmp[kwords*HWORDBITS+1];
   memset(bkmer, 0, sizeof(HWord)*kwords);
   memset(result, 0, sizeof(HWord)*kwords);
 
   for(i = 0; i < num_ops; i++)
   {
-    kmer_random(jhash->k, bkmer);
-    // bkmer[0] = num_ops*thread->threadid + i;
-    // printf("kmer: %s\n", hwords_to_binary(bkmer, kwords, tmp));
+    bkmer[0] = num_ops*thread->threadid + i;
     hpos = jelly_hash_find(jhash, (char*)bkmer, 1, &found);
     if(hpos == JHASH_NULL) {
       jelly_hash_print_stats(jhash, stdout);
       die("Hash full!");
     }
-    // printf("add word: %zu %s\n", hpos, hwords_to_binary(bkmer, 0, kwords, tmp));
-
-    // jelly_hash_get_key(jhash, hpos, result);
-    // if(memcmp(result,bkmer,kwords*sizeof(HWord))) {
-    //   printf("kmer: %s\n", hwords_to_binary(bkmer, 0, kwords, tmp));
-    //   printf("rslt: %s\n", hwords_to_binary(result, 0, kwords, tmp));
-    //   die("Add mismatch!");
-    // }
   }
-
-  /*
-  for(i = 0; i < num_ops; i++)
-  {
-    bkmer[0] = num_ops*thread->threadid + i;
-    // printf("find word: %s\n", hwords_to_binary(bkmer, 0, kwords, tmp));
-    hpos = jelly_hash_find(jhash, (char*)bkmer, 0, &found);
-    if(hpos == JHASH_NULL) die("Not found");
-    jelly_hash_get_key(jhash, hpos, result);
-    if(memcmp(result,bkmer,kwords*sizeof(HWord))) {
-      printf("kmer: %s\n", hwords_to_binary(bkmer, 0, kwords, tmp));
-      printf("rslt: %s\n", hwords_to_binary(result, 0, kwords, tmp));
-      die("Find mismatch!");
-    }
-  }
-  */
-
   pthread_exit(NULL);
 }
 
@@ -142,11 +90,13 @@ int main(int argc, char **argv)
   /* initialize random seed: */
   srand(time(NULL) + getpid());
 
-  printf("JellyHash Test k: %u, l: %u, b: %u, threads: %u\n",
-         k, l, b, num_of_threads);
-
   JellyHash jhash;
   jelly_hash_alloc(&jhash, l, b, k);
+
+  char memstr[50];
+  bytes_to_str((jhash.nbins * jhash.binsize * jhash.keylen) / 8, 1, memstr);
+  printf("JellyHash Test k: %u, l: %u, b: %u, threads: %u mem: %s\n",
+         k, l, b, num_of_threads, memstr);
 
   jelly_hash_print_stats(&jhash, stdout);
 
@@ -163,13 +113,18 @@ int main(int argc, char **argv)
     threaddata[i].num_ops = num_ops;
   }
 
-  for(i = 0; i < num_of_threads; i++)
-    if(pthread_create(&threads[i], NULL, speedtest, &threaddata[i]) != 0)
-      die("Creating thread failed\n");
+  if(num_of_threads <= 1) {
+    speedtest(&threaddata[0]);
+  }
+  else {
+    for(i = 0; i < num_of_threads; i++)
+      if(pthread_create(&threads[i], NULL, speedtest, &threaddata[i]) != 0)
+        die("Creating thread failed\n");
 
-  for(i = 0; i < num_of_threads; i++)
-    if(pthread_join(threads[i], NULL) != 0)
-      die("Creating thread failed\n");
+    for(i = 0; i < num_of_threads; i++)
+      if(pthread_join(threads[i], NULL) != 0)
+        die("Creating thread failed\n");
+  }
 
   jelly_hash_print_stats(&jhash, stdout);
   jelly_hash_dealloc(&jhash);
